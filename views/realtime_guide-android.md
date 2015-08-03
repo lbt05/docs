@@ -47,10 +47,42 @@ public class MyApplication extends Application{
 {% endblock %}
 
 {% block oneOnOneChat_sent %}
+
 ```
-- 初始化 ClientId = Tom
-- Tom 登录到系统
-- 向 Jerry 发送消息：'耗子，起床！' 
+  public void sendMessageToJerryFromTom() {
+    // Tom 用自己的名字作为clientId，获取AVIMClient对象实例
+    AVIMClient tom = AVIMClient.getInstance("Tom");
+    // 与服务器连接
+    tom.open(new AVIMClientCallback() {
+      @Override
+      public void done(AVIMClient client, AVIMException e) {
+        if (e == null) {
+          // 创建与Jerry之间的会话
+          client.createConversation(Arrays.asList("Tom", "Jerry"), "Tom & Jerry", null,
+              new AVIMConversationCreatedCallback() {
+
+                @Override
+                public void done(AVIMConversation conversation, AVIMException e) {
+                  if (e == null) {
+                    AVIMTextMessage msg = new AVIMTextMessage();
+                    msg.setText("耗子，起床！");
+                    // 发送消息
+                    conversation.sendMessage(msg, new AVIMConversationCallback() {
+
+                      @Override
+                      public void done(AVIMException e) {
+                        if (e == null) {
+                          Log.d("Tom & Jerry", "发送成功！");
+                        }
+                      }
+                    });
+                  }
+                }
+              });
+        }
+      }
+    });
+  }
 ```
 {% endblock %}
 
@@ -59,12 +91,44 @@ public class MyApplication extends Application{
 {% endblock %}
 
 {% block oneOnOneChat_received %}
+
 ```
-- 自定义消息响应类 CustomMessageHandler
-- 在 application  的 onCreate() 中注册 CustomMessageHandler
-- 初始化 ClientId = Jerry 
-- Jerry 登录到系统
-- 接收到 Tom 的消息
+public class MyApplication extends Application{
+ public static class CustomMessageHandler implements AVIMMessageHandler{
+   //接收到消息后的处理逻辑 
+   @Override
+   public void onMessage(AVIMMessage message,AVIMConversation conversation,AVIMClient client){
+     if(message instanceof AVIMTextMessage){
+       Log.d("Tom & Jerry",((AVIMTextMessage)message).getText());
+     }
+   }
+   
+   public void onMessageReceipt(AVIMMessage message,AVIMConversation conversation,AVIMClient client){
+   
+   }
+ }	
+   public void onCreate(){
+   ...
+   AVOSCloud.initialize(this,"{{appid}}","{{appkey}}");   
+   //注册默认的消息处理逻辑
+   AVIMMessageManager.registerDefaultMessageHandler(new CustomMessageHandler());
+   ...
+ }
+}
+...
+public void JerryReceiveMsgFromTom(){
+  //Jerry登录
+  AVIMClient jerry = AVIMClient.getInstance("Jerry");
+  jerry.open(new AVIMClientCallback(){
+  
+    @Override
+    public void done(AVIMClient client,AVIMException e){
+    	if(e==null){
+    	 ...//登录成功后的逻辑
+    	}
+    }
+  });
+}
 ```
 {% endblock %}
 
@@ -77,28 +141,132 @@ public class MyApplication extends Application{
 {% endblock %}
 
 {% block groupChat_sent %}
+
 ```
-- 初始化 ClientId = Tom
-- Tom 登录到系统
-- 建立一个朋友列表 friends：[Jerry, Bob, Harry, William]
-- 新建对话，把朋友们列为对话的参与人员
-- 发送消息：'Hey，你们在哪儿？'
+  public void sendMessageToJerryFromTom() {
+    // Tom 用自己的名字作为clientId，获取AVIMClient对象实例
+    AVIMClient tom = AVIMClient.getInstance("Tom");
+    // 与服务器连接
+    tom.open(new AVIMClientCallback() {
+      @Override
+      public void done(AVIMClient client, AVIMException e) {
+        if (e == null) {
+          // 创建与Jerry之间的会话
+          client.createConversation(Arrays.asList("Tom", "Jerry","Bob","Harry","William"), "Tom & Jerry", null,
+              new AVIMConversationCreatedCallback() {
+
+                @Override
+                public void done(AVIMConversation conversation, AVIMException e) {
+                  if (e == null) {
+                    AVIMTextMessage msg = new AVIMTextMessage();
+                    msg.setText("你们在哪儿？");
+                    // 发送消息
+                    conversation.sendMessage(msg, new AVIMConversationCallback() {
+
+                      @Override
+                      public void done(AVIMException e) {
+                        if (e == null) {
+                          Log.d("Tom & Jerry", "发送成功！");
+                        }
+                      }
+                    });
+                  }
+                }
+              });
+        }
+      }
+    });
+  }
 ```
 {% endblock %}
 
 {% block groupChat_received %}
+
 ```
-- 自定义消息响应类 CustomMessageHandler
-- 在 application  的 onCreate() 中注册 CustomMessageHandler
-- 初始化 ClientId = Bob
-- Bob 登录到系统
-- 设置接收消息的方法
-- Bob 收到消息后又回复了一条：@Tom, 我在 Jerry 家，你跟 Harry 什么时候过来？还有 William 和你在一起么？
+public class MyApplication extends Application{
+  public void onCreate(){
+   ...
+   AVOSCloud.initialize(this,"{{appid}}","{{appkey}}");
+   //这里指定只处理AVIMTextMessage类型的消息
+   AVIMMessageManager.registerMessageHandler(AVIMTextMessage.class,new CustomMessageHanlder());
+  }
+}
+
+- CustomMessageHandler.java
+ public class CustomMessageHandler<AVIMTextMessage> implements AVTypedMessageHandler{
+ 
+  @Override
+  public void onMessage(AVIMTextMessage msg,AVIMConversation conv,AVIMClient client){
+    Log.d("Tom & Jerry",msg.getText();)//你们在哪儿?
+    AVIMTextMessage reply = new AVIMTextMessage();
+    reply.setText("Tom，我在 Jerry 家，你跟 Harry 什么时候过来？还有 William 和你在一起么？");
+    conversation.sendMessage(reply,new AVIMConversationCallback(){
+  	   public void done(AVIMException e){
+  	     if(e==null){
+  	     //回复成功!
+  	     }
+  	   }
+  	 });
+  }
+  
+  public void onMessageReceipt(AVIMTextMessage msg,AVIMConversation conv,AVIMClient client){
+  
+  }
+ }
+ 
+- SomeActivity.java
+public void loginAsJerry(){
+	AVIMClient bob = AVIMClient.getInstance("Bob");
+	//Bob登录
+	bob.open(new AVIMClientCallback(){
+	  public void done(AVIMClient client,AVIMException e){
+	  	if(e==null){
+	  		//登录成功
+	  	}
+	  }
+	});
+}
 ```
 {% endblock %}
 
 {% block imageMessage_local_sent %}
+
 ```
+public void sendImage(String filePath){
+  AVIMClient tom = AVIMClient.getInstance("Tom");
+
+  tom.open(new AVIMClientCallback(){
+  
+    @Override
+    public void done(AVIMClient client,AVIMException e){
+      if(e==null){
+      //登录成功
+      client.createConversation(Arrays.asList("Jerry"),new AVIMConversationCreatedCallback(){
+      
+        @Override
+        public void done(AVIMConversation conv,AVIMException e){
+          if(e==null){
+            AVIMImageMessage picture = new AVIMImageMessage(filePath);
+            picture.setText("发自我的小米");
+            Map<String,Object> attributes = new HashMap<String,Object>();
+            attributes.put("location","旧金山");
+            picture.setAttribute(attributes);
+            conv.sendMessage(picture,new AVIMConversationCallback(){
+              
+              @Override
+              public void done(AVIMException e){
+                if(e==null){
+                //发送成功！
+                }
+              }
+            });
+          }
+        }
+      });
+      }
+    }
+  });
+}
 - 初始化 ClientId = Tom
 - Tom 登录到系统
 - 从系统媒体库获取第一张照片
